@@ -1,11 +1,11 @@
 package dto
 
-data class Post(
+data class Comment(
     val id: Long,
+    val postId: Long,
     val authorId: Long,
     val content: String,
     val published: Long,
     val likedByMe: Boolean,
     val likes: Int = 0,
-    var attachment: Attachment? = null,
 )
