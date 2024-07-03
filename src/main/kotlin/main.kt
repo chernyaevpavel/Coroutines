@@ -1,9 +1,6 @@
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import dto.Author
-import dto.Comment
-import dto.Post
-import dto.PostWithComments
+import dto.*
 import kotlinx.coroutines.*
 import okhttp3.*
 import okhttp3.logging.HttpLoggingInterceptor
@@ -30,7 +27,10 @@ fun main() {
                 val posts = getPosts(client)
                     .map { post ->
                         async {
-                            PostWithComments(post, getComments(client, post.id))
+                            PostWithComments(post,
+                                getComments(client, post.id).map {
+                                CommentWithAuthor(it)
+                            })
                         }
                     }.awaitAll()
                 println(posts)
@@ -38,8 +38,8 @@ fun main() {
                 val authorIdSet: MutableSet<Long> = mutableSetOf()
                 posts.forEach { postWithComments ->
                     authorIdSet.add(postWithComments.post.authorId)
-                    postWithComments.comments.forEach { comment ->
-                        authorIdSet.add(comment.authorId)
+                    postWithComments.comments.forEach { commentWithAuthor ->
+                        authorIdSet.add(commentWithAuthor.comment.authorId)
                     }
                 }
 
@@ -49,7 +49,19 @@ fun main() {
                     }.await()
                 }
 
-                println(authors)
+                val postWithAuthor = posts.map { postWithComment ->
+                    postWithComment.copy(
+                        author = authors.find {
+                            it.id == postWithComment.post.authorId
+                        },
+                        comments = postWithComment.comments.map {commentWithAuthor ->
+                            commentWithAuthor.copy(author = authors.find {
+                                it.id == commentWithAuthor.comment.authorId
+                            })
+                        }
+                        )
+                }
+                println(postWithAuthor)
 
             } catch (e: Exception) {
                 e.printStackTrace()
